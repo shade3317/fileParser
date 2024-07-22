@@ -13,15 +13,17 @@ class Node
 public:
     int    _id;
     int    _parentId;
+    int _stackIndex;
     string _name;
     string _value;
 
-    Node(int id, int parentId, string name, string value)
+    Node(int id, int parentId, string name, string value, int stackIndex)
     {
         _id = id;
         _parentId = parentId;
         _name = name;
         _value = value;
+        _stackIndex = stackIndex;
     }
 };
 
@@ -40,6 +42,7 @@ int main(int argc, char* argv[])
 
     string       line;
     int          id = 0;
+    int          stackIndex = 0;
     stack<int>   parentIdStack;
     vector<Node> nodes;
 
@@ -52,37 +55,46 @@ int main(int argc, char* argv[])
         while (line.find('=') != string::npos)
         {
             string name = line.substr(0, line.find('=') - 1);
+            name.erase(remove_if(name.begin(), name.end(), isspace), name.end());
             id++;
+
             line = line.substr(line.find('=') + 1);
 
             string value = "";
 
             if (line.find('{') != string::npos)
             {
-                Node node(id, parentIdStack.top(), name, value);
+                Node node(id, parentIdStack.top(), name, value, stackIndex);
                 nodes.push_back(node);
 
+                stackIndex++;
                 parentIdStack.push(id);
-                line = line.substr(line.find('{') + 2);
+                if (line.size() >= 2)
+                    line = line.substr(line.find('{') + 1);
 
                 continue;
             }
             else if (line.find('"') != string::npos)
             {
-                line = line.substr(line.find('"') + 1);
-                if (line.find('"') != string::npos)
+                if (line.size() >= 2)
                 {
-                    value = line.substr(0, line.find('"'));
-                    line = line.substr(line.find('"') + 2);
+                    line = line.substr(line.find('"') + 1);
+                    if (line.find('"') != string::npos)
+                    {
+                        value = line.substr(0, line.find('"'));
+                        if (line.size() >= 2)
+                            line = line.substr(line.find('"') + 1);
+                    }
                 }
             }
 
-            Node node(id, parentIdStack.top(), name, value);
+            Node node(id, parentIdStack.top(), name, value, stackIndex);
             nodes.push_back(node);
         }
 
         if (line.find('}') != string::npos)
         {
+            stackIndex--;
             parentIdStack.pop();
         }
 
@@ -96,26 +108,11 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < nodes.size(); i++)
     {
-        // Поиск родителей для определения количества пробелов (если родитель изменился) 
-        if (oldParentId != nodes[i]._parentId)
+        tab = "";
+
+        for (int j = 0; j < nodes[i]._stackIndex; j++)
         {
-            foundRecord_position = i;
-            tab = "";
-            oldParentId = nodes[i]._parentId;
-
-            while (true)
-            {
-                if (nodes[foundRecord_position]._parentId == 0) {
-                    break;
-                }
-
-                int findRecord_id = nodes[foundRecord_position]._parentId;
-                const auto p = find_if(nodes.begin(), nodes.end(),
-                    [findRecord_id](const Node& a) { return a._id == findRecord_id; });
-
-                foundRecord_position = p - begin(nodes);
-                tab.append("  ");
-            }
+            tab.append("  ");
         }
 
         // Вывод на экран
